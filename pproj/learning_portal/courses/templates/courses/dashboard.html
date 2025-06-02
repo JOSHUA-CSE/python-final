@@ -1,0 +1,241 @@
+{% extends 'courses/base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Dashboard</h2>
+
+    <style>
+        /* Custom styles for the dashboard */
+
+        /* Card Enhancements */
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-body {
+            padding: 25px;
+        }
+
+        /* Button Enhancements */
+        .btn {
+            border-radius: 20px;
+            padding: 10px 20px;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color, #007bff);
+            border-color: var(--primary-color, #007bff);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark-color, #0056b3);
+            border-color: var(--primary-dark-color, #004085);
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background-color: var(--success-color, #28a745);
+            border-color: var(--success-color, #28a745);
+        }
+
+        .btn-success:hover {
+            background-color: var(--success-dark-color, #218838);
+            border-color: var(--success-dark-color, #1e7e34);
+            transform: translateY(-1px);
+        }
+
+        /* Typography Enhancements */
+        h2 {
+            color: var(--heading-color, #333);
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        h3 {
+            color: var(--heading-color, #555);
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .card-title {
+            color: var(--heading-color, #333);
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+        }
+
+        .card-text {
+            color: var(--text-color, #666);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Layout and Spacing */
+        .container.mt-4 {
+            margin-top: 3rem !important; /* More top margin */
+        }
+
+        .row {
+            margin-left: -15px;
+            margin-right: -15px;
+        }
+
+        .col-md-4.mb-4 {
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+
+        hr {
+            margin-top: 40px;
+            margin-bottom: 40px;
+            border-top: 1px solid var(--border-color, #ccc);
+        }
+    </style>
+
+    <!-- Enrolled Courses Section -->
+    <h3>Enrolled Courses</h3>
+    <div class="row" id="enrolled-courses-section">
+        {% if enrolled_courses %}
+            {% for course in enrolled_courses %}
+                <div class="col-md-4 mb-4" id="course-{{ course.id }}">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ course.title }}</h5>
+                            <p class="card-text">{{ course.description|truncatechars:100 }}</p>
+                            <a href="{% url 'course_detail' course.id %}" class="btn btn-primary">Go to Course</a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <p>You are not currently enrolled in any courses.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <hr>
+
+    <!-- Available Courses Section -->
+    <h3>Available Courses</h3>
+    <div class="row" id="available-courses-section">
+        {% if available_courses %}
+            {% for course in available_courses %}
+                <div class="col-md-4 mb-4" id="course-{{ course.id }}">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ course.title }}</h5>
+                            <p class="card-text">{{ course.description|truncatechars:100 }}</p>
+                            <button class="btn btn-success enroll-button" data-course-id="{{ course.id }}">Enroll</button>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <p>No available courses at the moment.</p>
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+
+{% csrf_token %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const enrollButtons = document.querySelectorAll('.enroll-button');
+        const enrolledCoursesSection = document.getElementById('enrolled-courses-section');
+        const availableCoursesSection = document.getElementById('available-courses-section');
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        enrollButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const courseId = this.dataset.courseId;
+                const courseCard = document.getElementById(`course-${courseId}`);
+                const button = this; // Keep a reference to the button
+
+                fetch(`/enroll/${courseId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    // No body needed for this simple POST request
+                })
+                .then(response => {
+                    // Check for both success and client/server errors
+                    if (!response.ok) {
+                         // Handle HTTP errors
+                        return response.json().then(err => {
+                             throw new Error(`HTTP error! status: ${response.status}, message: ${err.error || 'Unknown error'}`);
+                         });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        console.log(data.message); // Log success message
+                        // Move the course card from available to enrolled section
+                        if (courseCard && enrolledCoursesSection) {
+                            // Create a 'Go to Course' link
+                            const goToCourseLink = document.createElement('a');
+                            goToCourseLink.href = `/course/${courseId}/`; // Construct the URL dynamically
+                            goToCourseLink.className = 'btn btn-primary';
+                            goToCourseLink.textContent = 'Go to Course';
+
+                            // Replace the Enroll button with the 'Go to Course' link
+                            button.parentNode.replaceChild(goToCourseLink, button);
+
+                            enrolledCoursesSection.appendChild(courseCard);
+
+                            // Optional: Add a success message to the UI
+                            // const successMessage = document.createElement('p');
+                            // successMessage.textContent = data.message;
+                            // enrolledCoursesSection.prepend(successMessage); // Or append, or show elsewhere
+
+                             // Check if the 'Available Courses' section is now empty and update the message
+                             if (availableCoursesSection.children.length === 0 || (availableCoursesSection.children.length === 1 && availableCoursesSection.children[0].tagName === 'DIV' && availableCoursesSection.children[0].classList.contains('col-12')) ) {
+                                 // Assuming the 'No available courses' message is inside a col-12 div
+                                 const noAvailableMessage = availableCoursesSection.querySelector('.col-12');
+                                 if(!noAvailableMessage) {
+                                      const messageDiv = document.createElement('div');
+                                      messageDiv.className = 'col-12';
+                                      messageDiv.innerHTML = '<p>No available courses at the moment.</p>';
+                                      availableCoursesSection.appendChild(messageDiv);
+                                 }
+                             }
+
+                             // Check if the 'Enrolled Courses' section had the 'not enrolled' message and remove it
+                            const notEnrolledMessage = enrolledCoursesSection.querySelector('.col-12');
+                            if (notEnrolledMessage && enrolledCoursesSection.children.length > 1) { // More than just the message div
+                                notEnrolledMessage.remove();
+                            }
+
+                        }
+                    } else {
+                        console.error('Enrollment failed:', data.error); // Log failure message
+                        alert('Enrollment failed: ' + data.error); // Show error to the user
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                    alert('An error occurred during enrollment.'); // Show generic error to the user
+                });
+            });
+        });
+    });
+</script>
+
+{% endblock %} 

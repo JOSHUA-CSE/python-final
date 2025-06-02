@@ -1,0 +1,132 @@
+{% extends 'courses/base.html' %}
+
+{% block title %}{{ course.title }} - Course Details{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h2>{{ course.title }}</h2>
+        </div>
+        <div class="card-body">
+            <p>{{ course.description }}</p>
+            <p><strong>Instructors:</strong> 
+                {% for instructor in course.instructors.all %}
+                    {{ instructor.username }}{% if not forloop.last %}, {% endif %}
+                {% empty %}
+                    No instructors assigned.
+                {% endfor %}
+            </p>
+        </div>
+    </div>
+
+    {% if course.youtube_url %}
+    <div class="mb-4 text-center">
+        <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;max-width:100%;">
+            <iframe src="https://www.youtube.com/embed/{{ course.youtube_url|cut:'https://www.youtube.com/watch?v='|cut:'https://youtu.be/' }}" frameborder="0" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if course.youtube_playlist_url %}
+    <h2>Course Playlist</h2>
+    <div class="video-responsive mb-4">
+        <iframe width="560" height="315" src="{{ course.youtube_playlist_url }}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+    {% endif %}
+
+    <h3>Quizzes</h3>
+    <ul>
+        {% for quiz in quizzes %}
+            <li>
+                <a href="{% url 'quiz_detail' quiz.id %}">{{ quiz.title }}</a>
+            </li>
+        {% empty %}
+            <li>No quizzes available for this course.</li>
+        {% endfor %}
+    </ul>
+
+    <hr>
+
+    <h3>Discussions</h3>
+    {% if main_discussion %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Course Chat: {{ main_discussion.title }}</h4>
+        </div>
+        <div class="card-body" style="max-height: 300px; overflow-y: auto; background: #f9f9f9;">
+            {% for comment in comments %}
+                <div class="mb-2 p-2 rounded {% if comment.author == user %}bg-primary text-white ms-auto{% else %}bg-light{% endif %}" style="max-width: 70%; {% if comment.author == user %}margin-left:auto;{% endif %}">
+                    <strong>{{ comment.author.username }}</strong> <small class="text-muted">{{ comment.created_at|date:"H:i d/m/Y" }}</small><br>
+                    {{ comment.content }}
+                </div>
+            {% empty %}
+                <p class="text-muted">No messages yet. Start the conversation!</p>
+            {% endfor %}
+        </div>
+        <div class="card-footer">
+            <form method="post">
+                {% csrf_token %}
+                <div class="input-group">
+                    <input type="text" name="content" class="form-control" placeholder="Type your message..." required>
+                    <button class="btn btn-primary" type="submit">Send</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <hr>
+
+    <h3>Course Resources</h3>
+
+    {# Resource Upload Form (Visible only to Instructors) #}
+    {% if is_instructor %}
+    <div class="card mb-4">
+        <div class="card-header">Upload New Resource</div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="resourceTitle" class="form-label">Title (Optional)</label>
+                    <input type="text" class="form-control" id="resourceTitle" name="title">
+                </div>
+                <div class="mb-3">
+                    <label for="resourceDescription" class="form-label">Description (Optional)</label>
+                    <textarea class="form-control" id="resourceDescription" name="description" rows="3"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="resourceFile" class="form-label">Select File</label>
+                    <input type="file" class="form-control" id="resourceFile" name="resource_file" accept=".pdf,.pptx,.mp4,.docx,.zip" required>
+                </div>
+                <button type="submit" class="btn btn-success">Upload Resource</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Resource List (Visible to All Users) #}
+    <div class="card">
+        <div class="card-header">Available Resources</div>
+        <ul class="list-group list-group-flush">
+            {% for resource in resources %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-file-earmark"></i> {# Generic file icon, consider adding specific icons based on file type #}
+                        <strong>{% if resource.title %}{{ resource.title }}{% else %}{{ resource.file.name }}{% endif %}</strong>
+                        {% if resource.description %}<br><small class="text-muted">{{ resource.description }}</small>{% endif %}
+                    </div>
+                    <div>
+                         <small class="text-muted me-2">Uploaded: {{ resource.upload_date|date:"Y-m-d H:i" }}</small>
+                        <a href="{{ resource.file.url }}" class="btn btn-sm btn-outline-primary" download>Download</a>
+                    </div>
+                </li>
+            {% empty %}
+                <li class="list-group-item">No resources available for this course yet.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+</div>
+{% endblock %} 

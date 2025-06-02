@@ -1,0 +1,27 @@
+{% extends 'courses/base.html' %}
+
+{% block title %}{{ quiz.title }} - Quiz{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h2>{{ quiz.title }}</h2>
+    </div>
+    <div class="card-body">
+        <p>{{ quiz.description }}</p>
+        <a href="{% url 'take_quiz' quiz.id %}" class="btn btn-success mb-3">Take Quiz</a>
+    </div>
+</div>
+
+<h3>Questions</h3>
+<ol>
+    {% for question in questions %}
+        <li>
+            <strong>{{ question.text }}</strong>
+            <!-- For now, just show the question. You can add answer forms later. -->
+        </li>
+    {% empty %}
+        <li>No questions in this quiz yet.</li>
+    {% endfor %}
+</ol>
+{% endblock %} 
